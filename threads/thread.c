@@ -317,6 +317,7 @@ thread_unblock (struct thread *t) {
 	ASSERT (t->status == THREAD_BLOCKED); // 스레드 t가 블로킹 상태인지 확인
 	list_insert_ordered(&ready_list, &t->elem, priority_desc, NULL); // ready 리스트에 넣어줌 priority를 기준으로 정렬
 	t->status = THREAD_READY; // t의 상태를 THREAD_READY로 변경
+	// 생성 시 우선 순위를 비교해서 러닝 쓰레드 우선순위보다 새로 생성된 쓰레드의 우선 순위가 높을시 컨텍스트 스위칭(thread_yield)
 	if(thread_current() != idle_thread && thread_get_priority() < t->priority) { // priority를 확인해서 thread_yield
 		thread_yield();
 	}
@@ -395,15 +396,20 @@ void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority; // priority 갱신 후
 
-	/* 조건문 추가해야함 */
 	/* priority_change를 위해서 컨텍스트 스위칭이 일어나야하기 때문에 yield 추가 */
-	thread_yield();
-
+	if (thread_get_priority() < list_entry(list_begin(&ready_list), struct thread, elem)->priority) {
+		thread_yield();
+	}
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
+	/* project1-donate-one: donate받은게 있다면 해당 우선순위 리턴하는 조건문 추가*/
+	if(thread_current()->donated_priority != PRI_DNTD_INIT) {
+		return thread_current()->donated_priority;
+	}
+	if(thread_current()->locks)
 	return thread_current ()->priority;
 }
 
@@ -512,8 +518,11 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *); // 스택포인터의 끝을 구조체의 끝으로 설정
 	t->priority = priority; // 우선순위 설정
 	t->magic = THREAD_MAGIC; // 스레드 magic값을 설정하여 구조체의 유효성을 확인
-	// project 1 : sleep_time 추가했으니 0으로 초기화
-	t->sleep_time = 0; 
+	// project1 : sleep_time 추가했으니 0으로 초기화
+	t->sleep_time = 0;
+	// project1 priority-donate-one: define 대입 
+	t->donated_priority = PRI_DNTD_INIT;
+	list_init(&t->locks);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
