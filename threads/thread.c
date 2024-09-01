@@ -409,7 +409,7 @@ thread_get_priority (void) {
 	if(thread_current()->donated_priority != PRI_DNTD_INIT) {
 		return thread_current()->donated_priority;
 	}
-	if(thread_current()->locks)
+
 	return thread_current ()->priority;
 }
 
